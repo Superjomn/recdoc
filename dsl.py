@@ -7,7 +7,7 @@ from typing import Dict, Any
 log = logging.getLogger('ply')
 
 
-class RecdocLexer(object):
+class RedocLexer(object):
     tokens = (
         'NAME',
         'NUMBER',
@@ -32,12 +32,15 @@ class RecdocLexer(object):
     states = (
         ('string', 'exclusive'),)
 
+    def __init__(self, **kwargs):
+        self.build(**kwargs)
+
     def t_NUMBER(self, t):
         r'\d+'
         try:
             t.value = int(t.value)
         except ValueError:
-            print("Integer value too large %d", t.value)
+            log.error("Integer value too large %d", t.value)
             t.value = 0
         return t
 
@@ -59,7 +62,7 @@ class RecdocLexer(object):
         pass
 
     def t_string_error(self, t):
-        print("illegal character '%s'" % t.value[0])
+        log.error("illegal character '%s'" % t.value[0])
         t.lexer.skip(1)
 
         t_string_ignore = ' \t'
@@ -72,14 +75,14 @@ class RecdocLexer(object):
         t.lexer.lineno += t.value.count("\n")
 
     def t_error(self, t):
-        print("Illegal character '%s'" % t.value[0])
+        log.error("Illegal character '%s'" % t.value[0])
         t.lexer.skip(1)
 
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
 
 
-class MyParser(object):
+class RedocParser(object):
     # Parsing rules
     precedence = (
         ('left', 'EQUALS'),
@@ -88,28 +91,30 @@ class MyParser(object):
         ('right', 'UMINUS'),
     )
 
-    tokens = RecdocLexer.tokens
+    tokens = RedocLexer.tokens
 
-    def __init__(self):
-        # dictionary of names
-        self.names: Dict[str, Any] = {}
+    def __init__(self, lexer: RedocLexer = RedocLexer()):
+        # dictionary of symbols
+        self.symbols: Dict[str, Any] = {}
+        self._lexer: RedocLexer = lexer
         self.parser = yacc.yacc(module=self, errorlog=log)
+
+    def parse(self, s: str):
+        self.parser.parse(lexer=self._lexer.lexer, input=s)
 
     def p_statement_assign(self, t):
         'statement : NAME EQUALS expression'
-        self.names[t[1]] = t[3]
+        self.symbols[t[1]] = t[3]
 
     def p_statement_expr(self, t):
         'statement : expression'
-        print(t[1])
+        log.warning(t[1])
 
     def p_expression_binop(self, t):
         '''expression : expression PLUS expression
                       | expression MINUS expression
                       | expression TIMES expression
                       | expression DIVIDE expression'''
-        print('a:', t[0])
-        print('a:', t[3])
         if t[2] == '+':
             t[0] = t[1] + t[3]
         elif t[2] == '-':
@@ -138,27 +143,22 @@ class MyParser(object):
     def p_expression_name(self, t):
         'expression : NAME'
         try:
-            t[0] = self.names[t[1]]
+            t[0] = self.symbols[t[1]]
         except LookupError:
-            print("Undefined name '%s'" % t[1])
+            log.error("Undefined name '%s'" % t[1])
             t[0] = 0
 
     def p_error(self, t):
-        print("Syntax error at '%s'" % t.value)
+        log.error("Syntax error at '%s'" % t.value)
 
 
 if __name__ == '__main__':
-    # Build the lexer
-    m = RecdocLexer()
-    m.build()
-    lexer = lex.lex(object=m)
-
-    parser = MyParser()
+    parser = RedocParser()
 
     while True:
         try:
             s = input('calc > ')  # Use raw_input on Python 2
         except EOFError:
             break
-        parser.parser.parse(s, lexer=m.lexer)
-        print(parser.names)
+        parser.parse(s)
+        log.warning(parser.symbols)
