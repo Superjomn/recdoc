@@ -1,4 +1,4 @@
-# Recdoc
+# Redoc
 
 Recdoc is a markdown-like DSL for writing documents that includes some instruction commands (such as bash shell commands and python codes).
 
