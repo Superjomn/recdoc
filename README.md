@@ -31,8 +31,11 @@ python-path := "xxx/xxx"
 
 # Head 1
 
-:output: true
-:output-length: 500
+```redoc
+output = true
+output_length = 500
+branch = "branch0"
+```
 ```python
 print('hello')
 ```

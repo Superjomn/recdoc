@@ -9,13 +9,23 @@ log = logging.getLogger('ply')
 
 class RedocLexer(object):
     tokens = (
-        'NAME',
         'NUMBER',
         'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS',
         'LPAREN',
         'RPAREN',
         'STRING',
+        'BOOL_TRUE',
+        'BOOL_FALSE',
+        'OR', 'AND',
+        'NAME',
     )
+
+    tokens_reserved = {
+        'true': 'BOOL_TRUE',
+        'false': 'BOOL_FALSE',
+        'or': 'OR',
+        'and': 'AND',
+    }
 
     # tokens
     t_EQUALS = r':='
@@ -27,13 +37,22 @@ class RedocLexer(object):
 
     t_LPAREN = r'\('
     t_RPAREN = r'\)'
-    t_NAME = r'[a-zA-Z_][a-zA-Z0-9_]*'
+    t_BOOL_TRUE = r'\btrue\b'
+    t_BOOL_FALSE = r'\bfalse\b'
+    t_OR = r'\bor\b'
+    t_AND = r'\band\b'
 
     states = (
         ('string', 'exclusive'),)
 
     def __init__(self, **kwargs):
         self.build(**kwargs)
+
+    def t_NAME(self, t):
+        r'[a-zA-Z_][a-zA-Z0-9_]*'
+        if t.value in RedocLexer.tokens_reserved:
+            t.type = RedocLexer.tokens_reserved[t.value]
+        return t
 
     def t_NUMBER(self, t):
         r'\d+'
@@ -59,7 +78,6 @@ class RedocLexer(object):
 
     def t_string_any(self, t):
         r'[^\n]'
-        pass
 
     def t_string_error(self, t):
         log.error("illegal character '%s'" % t.value[0])
@@ -124,6 +142,15 @@ class RedocParser(object):
         elif t[2] == '/':
             t[0] = t[1] / t[3]
 
+    def p_expression_condition(self, t):
+        '''expression : expression OR expression
+                      | expression AND expression
+        '''
+        if t[2] == 'or':
+            t[0] = t[1] or t[3]
+        elif t[2] == 'and':
+            t[0] = t[1] and t[3]
+
     def p_expression_uminus(self, t):
         'expression : MINUS expression %prec UMINUS'
         t[0] = -t[2]
@@ -140,6 +167,14 @@ class RedocParser(object):
         'expression : STRING'
         t[0] = t[1]
 
+    def p_expression_bool_true(self, t):
+        'expression : BOOL_TRUE'
+        t[0] = True
+
+    def p_expression_bool_false(self, t):
+        'expression : BOOL_FALSE'
+        t[0] = False
+
     def p_expression_name(self, t):
         'expression : NAME'
         try:
@@ -154,11 +189,14 @@ class RedocParser(object):
 
 if __name__ == '__main__':
     parser = RedocParser()
+    inputs = [
+        "a := 1",
+        'b := "hello"',
+        'c := true',
+        'd := true or false',
+        'f := true and false',
+    ]
 
-    while True:
-        try:
-            s = input('calc > ')  # Use raw_input on Python 2
-        except EOFError:
-            break
-        parser.parse(s)
-        log.warning(parser.symbols)
+    for x in inputs:
+        parser.parse(x)
+    print(parser.symbols)
