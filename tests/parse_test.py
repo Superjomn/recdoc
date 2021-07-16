@@ -18,7 +18,58 @@ def func(name):
 ```
 '''
     res = parser.parse(ss)
+
     print(res)
 
+def test_run():
+    parser = Parser()
+    ss = '''
+```python
+print('hello')
+a = 1
+b = 2
+def func(name):
+    print(name)
+```
+'''
+    res = parser.run(ss)
+    print('**res', '\n'.join(res))
 
-test_basic()
+
+def test_preprocess():
+    parser = Parser()
+    ss = '''
+:display: stdout
+:summary_size: 100
+```python
+print('hello')
+a = 1
+b = 2
+def func(name):
+    print(name)
+```
+'''
+    res: str = '\n'.join(parser.preprocess_inlined_redocs(ss))
+    print('res', res)
+    assert res.strip() == '''
+```redoc
+display := stdout
+summary_size := 100
+```
+```python
+print('hello')
+a = 1
+b = 2
+def func(name):
+    print(name)
+``` 
+    '''.strip()
+
+def test_parse_1():
+    file = open('./data/1_basic.md').read()
+    parser = Parser()
+    lines = parser.run(file)
+    print('\n'.join(lines))
+
+
+

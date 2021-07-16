@@ -1,7 +1,7 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from backends.py import eval_code, StdoutManager
 
@@ -38,27 +38,37 @@ def test_stdout():
     print("hello world")
     out = StdoutManager.my_stdout.getvalue()
     assert out == "hello world\n"
+    StdoutManager.restore_stdout()
+    StdoutManager.clear_stdout()
+    print("hello world")
+    res = StdoutManager.my_stdout.getvalue()
+    assert res == ""
 
 
 def test_redirect_stdout():
-    return
-    StdoutManager.clear_stdout()
     a = '''
 import sys
+StdoutManager.clear_stdout()
 StdoutManager.record_stdout()
 
 print('1234')
 a = StdoutManager.my_stdout.getvalue()
+StdoutManager.clear_stdout()
+StdoutManager.record_stdout()
+
+print('hello world')
+StdoutManager.restore_stdout()
     '''
     g = {
         'StdoutManager': StdoutManager,
     }
     l = {}
     eval_code(a, g, l)
-    assert l['a'] == "1234\n"
     StdoutManager.restore_stdout()
+    print('aaaaaaaaa')
+    print('l', l['a'])
+    assert l['a'] == "1234\n"
+    res = StdoutManager.my_stdout.getvalue()
 
-
-test_redirect_stdout()
-StdoutManager.restore_stdout()
-print('hell')
+    print('stdout', res)
+    assert res == "hello world\n"
